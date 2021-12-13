@@ -10,7 +10,7 @@ The template contained within this repository can be used to deploy a Satisfacto
 
 ## Overview
 
-The solution builds upon the [didstopia/satisfactory-server](https://hub.docker.com/r/factoriotools/factorio) Docker image, so generously curated by [the folks over at FactorioTools](https://github.com/orgs/factoriotools/people) (thank you!). 
+The solution builds upon the [didstopia/satisfactory-server](https://hub.docker.com/r/factoriotools/factorio) Docker image, so generously curated by (thank you!). 
 
 In a nutshell, the CloudFormation template launches an _ephemeral_ instance which joins itself to an Elastic Container Service (ECS) Cluster. Within this ECS Cluster, an ECS Service is configured to run a Satisfactory Docker image. The ephemeral instance does not store any saves, mods, Satisfactory config, data etc. - all of this state is stored on a network file system (Elastic File System - EFS).
 
