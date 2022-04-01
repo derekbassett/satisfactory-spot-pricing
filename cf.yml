@@ -21,14 +21,14 @@ Parameters:
     Type: String
     Description: "Running: A spot instance will launch shortly after setting this parameter; your Satisfactory server should start within 5-10 minutes of changing this parameter (once UPDATE_IN_PROGRESS becomes UPDATE_COMPLETE). Stopped: Your spot instance (and thus Satisfactory container) will be terminated shortly after setting this parameter."
     Default: Running
-    AllowedValues: 
+    AllowedValues:
     - Running
     - Stopped
 
   InstanceType:
     Type: String
-    Description: "m3.medium is a good cost effective (albeit older) instance, 1 VCPU and 3.75 GB of RAM with moderate network performance. Change at your discretion. https://aws.amazon.com/ec2/instance-types/."
-    Default: m3.medium
+    Description: "m3.large is a good cost effective (albeit older) instance, 1 VCPU and 3.75 GB of RAM with moderate network performance. Change at your discretion. https://aws.amazon.com/ec2/instance-types/."
+    Default: m3.large
 
   SpotPrice:
     Type: String
@@ -58,7 +58,7 @@ Parameters:
 Metadata:
   AWS::CloudFormation::Interface:
     ParameterGroups:
-      - Label: 
+      - Label:
           default: Essential Configuration
         Parameters:
         - SatisfactoryImageTag
@@ -66,12 +66,12 @@ Metadata:
         - ServerState
         - InstanceType
         - SpotPrice
-      - Label: 
+      - Label:
           default: Remote Access (SSH) Configuration (Optional)
         Parameters:
         - KeyPairName
         - YourIp
-      - Label: 
+      - Label:
           default: DNS Configuration (Optional)
         Parameters:
         - HostedZoneId
@@ -116,9 +116,9 @@ Resources:
   # BASIC VPC
   # ====================================================
 
-  Vpc: 
+  Vpc:
     Type: AWS::EC2::VPC
-    Properties: 
+    Properties:
       CidrBlock: 10.100.0.0/26
       EnableDnsSupport: true
       EnableDnsHostnames: true
@@ -126,31 +126,31 @@ Resources:
   SubnetA:
     Type: AWS::EC2::Subnet
     Properties:
-      AvailabilityZone: !Select 
+      AvailabilityZone: !Select
       - 0
-      - !GetAZs 
+      - !GetAZs
         Ref: 'AWS::Region'
       CidrBlock: !Select [ 0, !Cidr [ 10.100.0.0/26, 4, 4 ] ]
-      VpcId: !Ref Vpc  
+      VpcId: !Ref Vpc
 
   SubnetARoute:
     Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties: 
+    Properties:
       RouteTableId: !Ref RouteTable
       SubnetId: !Ref SubnetA
 
   SubnetBRoute:
     Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties: 
+    Properties:
       RouteTableId: !Ref RouteTable
-      SubnetId: !Ref SubnetB  
+      SubnetId: !Ref SubnetB
 
   SubnetB:
     Type: AWS::EC2::Subnet
     Properties:
-      AvailabilityZone: !Select 
+      AvailabilityZone: !Select
       - 1
-      - !GetAZs 
+      - !GetAZs
         Ref: 'AWS::Region'
       CidrBlock: !Select [ 1, !Cidr [ 10.100.0.0/26, 4, 4 ] ]
       VpcId: !Ref Vpc
@@ -161,18 +161,18 @@ Resources:
 
   InternetGatewayAttachment:
     Type: AWS::EC2::VPCGatewayAttachment
-    Properties: 
+    Properties:
       InternetGatewayId: !Ref InternetGateway
       VpcId: !Ref Vpc
 
   RouteTable:
     Type: AWS::EC2::RouteTable
-    Properties: 
-      VpcId: !Ref Vpc    
+    Properties:
+      VpcId: !Ref Vpc
 
   Route:
     Type: AWS::EC2::Route
-    Properties: 
+    Properties:
       DestinationCidrBlock: 0.0.0.0/0
       GatewayId: !Ref InternetGateway
       RouteTableId: !Ref RouteTable
@@ -203,7 +203,7 @@ Resources:
 
   EfsSg:
     Type: AWS::EC2::SecurityGroup
-    Properties: 
+    Properties:
       GroupName: !Sub "${AWS::StackName}-efs"
       GroupDescription: !Sub "${AWS::StackName}-efs"
       SecurityGroupIngress:
@@ -212,19 +212,19 @@ Resources:
         IpProtocol: tcp
         SourceSecurityGroupId: !Ref Ec2Sg
       VpcId: !Ref Vpc
-      
+
   # ====================================================
   # INSTANCE CONFIG
   # ====================================================
 
   Ec2Sg:
     Type: AWS::EC2::SecurityGroup
-    Properties: 
+    Properties:
       GroupName: !Sub "${AWS::StackName}-ec2"
       GroupDescription: !Sub "${AWS::StackName}-ec2"
       SecurityGroupIngress:
       - !If
-        - IpAddressProvided 
+        - IpAddressProvided
         - FromPort: 22
           ToPort: 22
           IpProtocol: tcp
@@ -251,7 +251,7 @@ Resources:
       IamInstanceProfile: !Ref InstanceProfile
       ImageId: !Ref ECSAMI
       InstanceType: !Ref InstanceType
-      KeyName: 
+      KeyName:
         !If [ KeyPairNameProvided, !Ref KeyPairName, !Ref 'AWS::NoValue' ]
       SecurityGroups:
       - !Ref Ec2Sg
@@ -260,12 +260,10 @@ Resources:
         Fn::Base64: !Sub |
           #!/bin/bash -xe
           yum install -y amazon-efs-utils
-          mkdir /opt
-          mount -t efs ${Efs}:/ /opt
-          chown 845:845 /opt
-          mkdir /opt/steamcmd/satisfactory/
-          mkdir /opt/app/.config
-          echo ECS_CLUSTER=${EcsCluster} >> /etc/ecs/ecs.config          
+          mkdir /opt/satisfactory
+          mount -t efs ${Efs}:/ /opt/satisfactory
+          chown 1000:1000 /opt/satisfactory
+          echo ECS_CLUSTER=${EcsCluster} >> /etc/ecs/ecs.config
 
   AutoScalingGroup:
     Type: AWS::AutoScaling::AutoScalingGroup
@@ -284,7 +282,7 @@ Resources:
 
   InstanceRole:
     Type: AWS::IAM::Role
-    Properties: 
+    Properties:
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -298,16 +296,16 @@ Resources:
         - arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role
       Policies:
         - PolicyName: root
-          PolicyDocument: 
+          PolicyDocument:
             Version: "2012-10-17"
-            Statement: 
+            Statement:
               - Effect: "Allow"
                 Action: "route53:*"
                 Resource: "*"
 
   InstanceProfile:
     Type: AWS::IAM::InstanceProfile
-    Properties: 
+    Properties:
       Roles:
         - !Ref InstanceRole
 
@@ -318,28 +316,28 @@ Resources:
 
   EcsService:
     Type: AWS::ECS::Service
-    Properties: 
+    Properties:
       Cluster: !Ref EcsCluster
       DesiredCount: !FindInMap [ ServerState, !Ref ServerState, DesiredCapacity ]
       ServiceName: !Sub "${AWS::StackName}-ecs-service"
-      TaskDefinition: !Ref EcsTask  
+      TaskDefinition: !Ref EcsTask
       DeploymentConfiguration:
         MaximumPercent: 100
         MinimumHealthyPercent: 0
 
   EcsTask:
     Type: AWS::ECS::TaskDefinition
-    Properties: 
+    Properties:
       Volumes:
       - Host:
-          SourcePath: /opt/steamcmd/satisfactory
+          SourcePath: /opt/satisfactory/satisfactory-data
         Name: satisfactory
       - Host:
-          SourcePath: /opt/app/.config
+          SourcePath: /opt/satisfactory/satisfactory-saves
         Name: app
       ContainerDefinitions:
         - Name: satisfactory
-          MemoryReservation: 3072
+          MemoryReservation: 8192
           Image: !Sub "didstopia/satisfactory-server:${SatisfactoryImageTag}"
           PortMappings:
           - ContainerPort: 7777
@@ -369,7 +367,7 @@ Resources:
   SetDNSRecordLambdaRole:
     Type: AWS::IAM::Role
     Condition: DnsConfigEnabled
-    Properties: 
+    Properties:
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -383,9 +381,9 @@ Resources:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
       Policies:
         - PolicyName: root
-          PolicyDocument: 
+          PolicyDocument:
             Version: "2012-10-17"
-            Statement: 
+            Statement:
               - Effect: "Allow"
                 Action: "route53:*"
                 Resource: "*"
@@ -396,7 +394,7 @@ Resources:
   SetDNSRecordLambda:
     Type: "AWS::Lambda::Function"
     Condition: DnsConfigEnabled
-    Properties: 
+    Properties:
       Environment:
         Variables:
           HostedZoneId: !Ref HostedZoneId
@@ -438,7 +436,7 @@ Resources:
   LaunchEvent:
     Type: AWS::Events::Rule
     Condition: DnsConfigEnabled
-    Properties: 
+    Properties:
       EventPattern:
         source:
         - aws.autoscaling
@@ -456,7 +454,7 @@ Resources:
   LaunchEventLambdaPermission:
     Type: AWS::Lambda::Permission
     Condition: DnsConfigEnabled
-    Properties: 
+    Properties:
       Action: lambda:InvokeFunction
       FunctionName: !GetAtt SetDNSRecordLambda.Arn
       Principal: events.amazonaws.com
@@ -466,4 +464,3 @@ Outputs:
   CheckInstanceIp:
     Description: To find your Satisfactory instance IP address, visit the following link. Click on the instance to find its Public IP address.
     Value: !Sub "https://${AWS::Region}.console.aws.amazon.com/ec2/v2/home?region=${AWS::Region}#Instances:tag:aws:autoscaling:groupName=${AutoScalingGroup};sort=tag:Name"
-
